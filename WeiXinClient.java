@@ -68,6 +68,7 @@
 		return output;
 	}
 
+//-------------------------------------------------------------------------------------------------------------------------------
 
   /**
     * 这个函数的作用是得到一个32位的唯一的不重复的随机的字符串
@@ -77,3 +78,50 @@
     {
         return UUID.randomUUID().toString().replaceAll("-", "").substring(0, 32);
     }
+
+//-------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * 通过请求的数据data和密钥key，以及签名类型来得到校验字符串
+ * 
+ * @param data 请求数据
+ * @param key 密钥
+ * @param signType 签名类型
+ * @return 签名好之后的数据
+ * @throws Exception
+ */
+public static String generateSignature(final Map<String, String> data, String key, SignType signType) throws Exception 
+{
+	// 得到保存数据的Map的Set，而且这个set中保存的全部都是key
+	Set<String> keySet = data.keySet();
+	// 将这个set中的数据全部放置到一个字符串数组中
+	String[] keyArray = keySet.toArray(new String[keySet.size()]);
+	// 使用Array的默认的排序方式（如果要自定义排序方式就重新Array中的compareTo方法），默认排序方式就是ASCII编码先后顺序，可以理解为以首字母先后排序
+	Arrays.sort(keyArray);
+	StringBuilder sb = new StringBuilder();
+		
+	for(String k : keyArray) 
+	{
+		//添加数据
+		if(data.get(k).trim().length() > 0) // 参数值为空，则不参与签名
+		{
+			sb.append(k).append("=").append(data.get(k).trim()).append("&");
+		}
+	}
+
+	sb.append("key=").append(key);
+	
+	//开始加密，这一段代码可以自己根据具体需求写
+	if(SignType.MD5.equals(signType)) 
+	{
+		return MD5(sb.toString()).toUpperCase();
+	}
+	else if(SignType.HMACSHA256.equals(signType)) 
+	{
+		return HMACSHA256(sb.toString(), key);
+	}
+	else 
+	{
+		throw new Exception(String.format("Invalid sign_type: %s", signType));
+	}
+}
