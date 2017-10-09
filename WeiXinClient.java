@@ -1,4 +1,4 @@
- /**
+   /**
      * 将Map中的数据转换为XML格式的字符串,但是注意转换之后的xml报文只有根节点和一级子节点
      *
      * @param data Map类型数据
@@ -67,3 +67,13 @@
 		
 		return output;
 	}
+
+
+  /**
+    * 这个函数的作用是得到一个32位的唯一的不重复的随机的字符串
+    * @return
+    */
+    public static String generateNonceStr() 
+    {
+        return UUID.randomUUID().toString().replaceAll("-", "").substring(0, 32);
+    }
