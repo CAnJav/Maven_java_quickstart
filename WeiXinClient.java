@@ -169,3 +169,110 @@ public static String generateSignature(final Map<String, String> data, String ke
 		throw new Exception(String.format("Invalid sign_type: %s", signType));
 	}
 }
+
+//-------------------------------------------------------------------------------------------------------------------------------
+/**
+ * 需要证书的请求，这个方法中涉及到了动态加载证书，但是整个函数解释不是很完善，有待完善
+ * 而且在使用的时候要自己修改，比如读取证书金额keyStore的加密类型
+ * 
+ * @param urlSuffix String
+ * @param reqData 向wxpay post的请求数据
+ * @param connectTimeoutMs 超时时间，单位是毫秒
+ * @param readTimeoutMs 超时时间，单位是毫秒
+ * @return API返回数据
+ * @throws Exception
+ */
+public String requestWithCert(String strUrl, Map<String, String> reqData, int connectTimeoutMs, int readTimeoutMs) throws Exception 
+{
+	String UTF8 = "UTF-8";
+	//将请求的数据从Map转化为String字符串
+	String reqBody = WXPayUtil.mapToXml(reqData);
+	//将字符串url转化WieURL对象
+	URL httpUrl = new URL(strUrl);
+	char[] password = config.getMchID().toCharArray();
+	//得到证书数据流
+	InputStream certStream = config.getCertStream();
+	//keyStore的作用是用来保存密钥和证书，这里使用getInstance来返回指定类型的KeyStore
+	KeyStore ks = KeyStore.getInstance("PKCS12");
+	//通过一个输入流(证书)来加载(填满)一个KeyStore类，并且添加上password来为这个类来进行加密
+	ks.load(certStream, password);
+		
+	KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+	kmf.init(ks, password);
+
+	//返回指定的安全协议，我们使用最新的SSL版本TLS
+	SSLContext sslContext = SSLContext.getInstance("TLS");
+	sslContext.init(kmf.getKeyManagers(), null, new SecureRandom());
+	
+	//建立HttpsURL的连接
+	HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+	HttpURLConnection httpURLConnection = (HttpURLConnection) httpUrl.openConnection();
+	
+	//向远程服务输出数据
+	httpURLConnection.setDoOutput(true);
+	httpURLConnection.setRequestMethod("POST");
+	httpURLConnection.setConnectTimeout(connectTimeoutMs);
+	httpURLConnection.setReadTimeout(readTimeoutMs);
+	httpURLConnection.connect();
+	OutputStream outputStream = httpURLConnection.getOutputStream();
+	outputStream.write(reqBody.getBytes(UTF8));
+	//得到远程服务器返回数据
+	InputStream inputStream = httpURLConnection.getInputStream();
+	BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, UTF8));
+	final StringBuffer stringBuffer = new StringBuffer();
+	String line = null;
+	while((line = bufferedReader.readLine()) != null) 
+	{
+		stringBuffer.append(line);
+	}
+		
+	String resp = stringBuffer.toString();
+	if(stringBuffer != null) 
+	{
+		try 
+		{
+			bufferedReader.close();
+		} 
+		catch (IOException e) 
+		{
+			// e.printStackTrace();
+		}
+	}
+		
+	if(inputStream != null) 
+	{
+		try 
+		{
+			inputStream.close();
+		} 
+		catch (IOException e) 
+		{
+			// e.printStackTrace();
+		}
+	}
+		
+	if(outputStream != null) 
+	{
+		try 
+		{
+			outputStream.close();
+		} 
+		catch (IOException e) 
+		{
+			// e.printStackTrace();
+		}
+	}
+		
+	if (certStream != null) 
+	{
+		try 
+		{
+			certStream.close();
+		} 
+		catch (IOException e) 
+		{
+		}
+	}
+	
+	return resp;
+}
