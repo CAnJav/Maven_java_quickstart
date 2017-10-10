@@ -69,7 +69,52 @@
 	}
 
 //-------------------------------------------------------------------------------------------------------------------------------
+	/**
+	 * XML格式字符串转换为Map，但是注意这个方法只能解析只有一级子节点的xml报文，不能解决有多级子节点的xml报文
+	 *
+	 * @param strXML
+	 *            XML字符串
+	 * @return XML数据转换后的Map
+	 * @throws Exception
+	 */
+	public static Map<String, String> xmlToMap(String strXML) throws Exception 
+	{
+		// 建立保存返回数据的Map
+		Map<String, String> data = new HashMap<String, String>();
+		// 建立一个文档工厂
+		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+		// 通过文档工厂来建立一个文档创建器
+		DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+		// 将返回的xml报文转化为inputStream
+		InputStream stream = new ByteArrayInputStream(strXML.getBytes("UTF-8"));
+		// 使用创建器documentBuilder的parse方法来将数据流解析为文档
+		org.w3c.dom.Document doc = documentBuilder.parse(stream);
+		// normalize的作用是将一个文档中的所有的元素全部标准化，主要作用就是去除空的节点，拼接剩余的节点
+		doc.getDocumentElement().normalize();
+		NodeList nodeList = doc.getDocumentElement().getChildNodes();
 
+		for (int idx = 0; idx < nodeList.getLength(); ++idx) 
+		{
+			Node node = nodeList.item(idx);
+			// 只处理元素节点，其他类型的节点的数据不管
+			if(node.getNodeType() == Node.ELEMENT_NODE) 
+			{
+				org.w3c.dom.Element element = (org.w3c.dom.Element) node;
+				data.put(element.getNodeName(), element.getTextContent());
+			}
+		}
+
+		try 
+		{
+			stream.close();
+		}
+		catch (Exception ex) 
+		{
+		}
+
+		return data;
+	}
+//-------------------------------------------------------------------------------------------------------------------------------
   /**
     * 这个函数的作用是得到一个32位的唯一的不重复的随机的字符串
     * @return
@@ -80,7 +125,6 @@
     }
 
 //-------------------------------------------------------------------------------------------------------------------------------
-
 /**
  * 通过请求的数据data和密钥key，以及签名类型来得到校验字符串
  * 
